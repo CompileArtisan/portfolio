@@ -31,16 +31,27 @@ function blocksToText(blocks) {
 // instead of crashing.
 
 async function loadData() {
-  const [settings, experience, projects, openSource, blogs, publications, preprints] =
-    await Promise.all([
-      sanityFetch('*[_type == "siteSettings"][0]').catch(() => null),
-      sanityFetch('*[_type == "experience"] | order(order asc)').catch(() => []),
-      sanityFetch('*[_type == "project"] | order(order asc)').catch(() => []),
-      sanityFetch('*[_type == "openSourceContribution"] | order(mergedAt desc)').catch(() => []),
-      sanityFetch('*[_type == "blogPost"] | order(_createdAt desc)').catch(() => []),
-      sanityFetch('*[_type == "publication"] | order(_createdAt desc)').catch(() => []),
-      sanityFetch('*[_type == "preprint"] | order(_createdAt desc)').catch(() => []),
-    ]);
+  const [
+    settings,
+    experience,
+    projects,
+    openSource,
+    blogs,
+    publications,
+    preprints,
+    certifications,
+    achievements,
+  ] = await Promise.all([
+    sanityFetch('*[_type == "siteSettings"][0]').catch(() => null),
+    sanityFetch('*[_type == "experience"] | order(order asc)').catch(() => []),
+    sanityFetch('*[_type == "project"] | order(order asc)').catch(() => []),
+    sanityFetch('*[_type == "openSourceContribution"] | order(mergedAt desc)').catch(() => []),
+    sanityFetch('*[_type == "blogPost"] | order(_createdAt desc)').catch(() => []),
+    sanityFetch('*[_type == "publication"] | order(_createdAt desc)').catch(() => []),
+    sanityFetch('*[_type == "preprint"] | order(_createdAt desc)').catch(() => []),
+    sanityFetch('*[_type == "certification"] | order(order asc)').catch(() => []),
+    sanityFetch('*[_type == "achievement"] | order(order asc)').catch(() => []),
+  ]);
 
   return {
     settings: settings
@@ -60,6 +71,8 @@ async function loadData() {
     blogs: (blogs || []).map((b) => ({ ...b, url: b.slug ? `/blog/${b.slug.current}` : b.url || '#' })),
     publications: publications || [],
     preprints: preprints || [],
+    certifications: certifications || [],
+    achievements: (achievements || []).map(normalizeAchievement),
     githubHandle: (settings && settings.githubHandle) || '',
   };
 }
@@ -69,6 +82,9 @@ function normalizeExperience(e) {
 }
 function normalizeProject(p) {
   return { ...p, description: typeof p.description === 'string' ? p.description : blocksToText(p.description) };
+}
+function normalizeAchievement(a) {
+  return { ...a, descriptionText: blocksToText(a.description) };
 }
 
 // ---- Rendering ----------------------------------------------------------
@@ -96,6 +112,8 @@ function renderNav() {
         <a href="#blogs">Blogs</a>
         <a href="#publications">Publications</a>
         <a href="#preprints">Preprints</a>
+        <a href="#certifications">Certifications</a>
+        <a href="#achievements">Achievements</a>
         <a href="#guestbook">Guestbook</a>
       </div>
       <div class="nav-right">
@@ -322,6 +340,57 @@ function renderPreprints(items) {
   </section>`;
 }
 
+function renderCertifications(items) {
+  if (!items.length) {
+    return `
+    <section class="block" id="certifications">
+      <h2>Certifications</h2>
+      ${emptyState('Nothing here yet — add "Certification" documents in the Studio.')}
+    </section>`;
+  }
+  const rows = items
+    .map(
+      (c) => `
+      <div class="entry">
+        <h3>${c.title || ''}</h3>
+        <div class="meta">${c.issuer || ''}${c.dateLabel ? ', ' + c.dateLabel : ''}${c.credentialUrl ? ' · <a href="' + c.credentialUrl + '" target="_blank" rel="noopener">credential</a>' : ''}</div>
+      </div>`
+    )
+    .join('');
+  return `
+  <section class="block" id="certifications">
+    <h2>Certifications</h2>
+    <p class="block-sub">Courses and credentials.</p>
+    ${rows}
+  </section>`;
+}
+
+function renderAchievements(items) {
+  if (!items.length) {
+    return `
+    <section class="block" id="achievements">
+      <h2>Achievements</h2>
+      ${emptyState('Nothing here yet — add "Achievement / Award" documents in the Studio.')}
+    </section>`;
+  }
+  const rows = items
+    .map(
+      (a) => `
+      <div class="entry">
+        <h3>${a.title || ''}${a.tier ? ' <span class="meta" style="display:inline">(' + a.tier + ')</span>' : ''}</h3>
+        <div class="meta">${a.issuer || ''}${a.dateLabel ? ', ' + a.dateLabel : ''}</div>
+        ${a.descriptionText ? `<p>${a.descriptionText}</p>` : ''}
+      </div>`
+    )
+    .join('');
+  return `
+  <section class="block" id="achievements">
+    <h2>Achievements</h2>
+    <p class="block-sub">Awards and honors.</p>
+    ${rows}
+  </section>`;
+}
+
 function renderGuestbook() {
   return `
   <section class="block" id="guestbook">
@@ -377,6 +446,8 @@ async function main() {
             renderBlogs(data.blogs),
             renderPublications(data.publications),
             renderPreprints(data.preprints),
+            renderCertifications(data.certifications),
+            renderAchievements(data.achievements),
             renderGuestbook(),
             renderFooter(),
             '</main>',
