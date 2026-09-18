@@ -2,18 +2,21 @@
 //
 // Pushes your real content into the Sanity dataset, shaped exactly to the
 // schemas in studio/schemas/ (siteSettings, experience, project,
-// publication, openSourceContribution, blogPost, preprint).
+// publication, openSourceContribution, blogPost, preprint, certification,
+// achievement).
 //
 // Merged from resume.tex AND cv.tex. Where they disagreed (GPA, wording),
 // cv.tex was treated as the more recent/authoritative one.
 //
-// NOT included below because there's no matching schema type yet:
-//   - Certifications (Google Cloud Cybersecurity, AWS Cloud Foundations,
-//     MATLAB Image Processing Onramp, GL Computer Vision Essentials)
-//   - Education (Amrita Vishwa Vidyapeetham B.Tech, + two prior schools)
-// If you want these on the site, you'd need to add a schema type for one
-// or both (e.g. studio/schemas/certification.js, .../education.js) and a
-// matching render function in app.js — happy to write those if you want them.
+// UPDATE from the previous version of this script: certifications and
+// achievements/honors now have schema types (studio/schemas/certification.js,
+// studio/schemas/achievement.js) and are seeded below.
+//
+// STILL NOT included below because there's no matching schema type yet:
+//   - Education (Amrita Vishwa Vidyapeetham B.Tech, + two prior schools —
+//     Sri Chaitanya Techno School, Jaigopal Garodia Rashtrotthana Vidya
+//     Kendra). Add a studio/schemas/education.js (+ render function in
+//     app.js) if you want this on the site — happy to write it if you want.
 //
 // ---------------------------------------------------------------------
 // SETUP
@@ -186,6 +189,54 @@ const publications = [
   },
 ];
 
+// NEW — from cv.tex "Certifications" table.
+const certifications = [
+  {
+    title: 'Google Cloud Cybersecurity Certificate',
+    issuer: 'Google',
+    dateLabel: '',
+    credentialUrl: 'https://www.credly.com/badges/3e9613f0-bbe7-4874-9c66-4ae538e40ab3',
+    order: 1,
+  },
+  {
+    title: 'Academy Graduate, Cloud Foundations',
+    issuer: 'AWS',
+    dateLabel: '',
+    credentialUrl: 'https://www.credly.com/badges/6407291d-da81-4619-bc2c-ec0824d1875c',
+    order: 2,
+  },
+  {
+    title: 'Image Processing Onramp',
+    issuer: 'MATLAB (MathWorks)',
+    dateLabel: 'Jan 2026',
+    credentialUrl:
+      'https://matlabacademy.mathworks.com/progress/share/certificate.html?id=1fa0de14-e555-4863-9e36-17d9577c656e',
+    order: 3,
+  },
+  {
+    title: 'Computer Vision Essentials',
+    issuer: 'Great Learning (GL)',
+    dateLabel: '',
+    credentialUrl: 'https://www.mygreatlearning.com/certificate/VRJJEBWJ',
+    order: 4,
+  },
+];
+
+// NEW — from resume.tex "Honors and Awards" section.
+const achievements = [
+  {
+    title: 'Amrita Vidyanidhi Scholarship',
+    issuer: 'Amrita Vishwa Vidyapeetham — University Scholarship Committee',
+    dateLabel: 'AY 2024–25',
+    tier: 'Slab 1 (highest tier)',
+    description: textBlock(
+      'Fee-slab upgraded from Slab 2 to Slab 1 by the University Scholarship Committee for commendable academic performance.'
+    ),
+    documents: [],
+    order: 1,
+  },
+];
+
 // Nothing in either document maps to these — left empty so the Studio
 // sections exist but stay blank until you add real entries.
 const openSourceContributions = [];
@@ -210,6 +261,8 @@ async function run() {
   for (const doc of experience) await upsert({ _type: 'experience', ...doc }, 'experience');
   for (const doc of projects) await upsert({ _type: 'project', ...doc }, 'project');
   for (const doc of publications) await upsert({ _type: 'publication', ...doc }, 'publication');
+  for (const doc of certifications) await upsert({ _type: 'certification', ...doc }, 'certification');
+  for (const doc of achievements) await upsert({ _type: 'achievement', ...doc }, 'achievement');
   for (const doc of openSourceContributions) await upsert({ _type: 'openSourceContribution', ...doc }, 'oss');
   for (const doc of blogPosts) await upsert({ _type: 'blogPost', ...doc }, 'blog');
   for (const doc of preprints) await upsert({ _type: 'preprint', ...doc }, 'preprint');

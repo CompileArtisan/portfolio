@@ -5,6 +5,8 @@ import openSourceContribution from './openSourceContribution'
 import blogPost from './blogPost'
 import publication from './publication'
 import preprint from './preprint'
+import certification from './certification'
+import achievement from './achievement'
 
 export const schemaTypes = [
   siteSettings,
@@ -14,4 +16,6 @@ export const schemaTypes = [
   blogPost,
   publication,
   preprint,
+  certification,
+  achievement,
 ]
