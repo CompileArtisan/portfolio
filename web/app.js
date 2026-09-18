@@ -134,6 +134,7 @@ async function loadData() {
           funFact: settings.funFact || '',
           email: settings.email || '',
           links: settings.links || [],
+          sectionVisibility: settings.sectionVisibility || {},
         }
       : null,
     experience: (experience || []).map(normalizeExperience),
@@ -171,23 +172,38 @@ function emptyState(text) {
   return `<p class="block-sub" style="margin-top:1rem;">${text}</p>`;
 }
 
-function renderNav() {
+// Every section this site can show, in display order. `key` matches a
+// boolean field on siteSettings.sectionVisibility (Studio: "Section
+// Visibility"); a section renders only when that field isn't `false`
+// (so old Site Settings docs without the field yet still show everything).
+const SECTIONS = [
+  { key: 'about', anchor: 'about', label: 'About' },
+  { key: 'experience', anchor: 'experience', label: 'Experience' },
+  { key: 'education', anchor: 'education', label: 'Education' },
+  { key: 'projects', anchor: 'projects', label: 'Projects' },
+  { key: 'openSource', anchor: 'opensource', label: 'Open Source' },
+  { key: 'github', anchor: 'github', label: 'GitHub' },
+  { key: 'blogs', anchor: 'blogs', label: 'Blogs' },
+  { key: 'publications', anchor: 'publications', label: 'Publications' },
+  { key: 'preprints', anchor: 'preprints', label: 'Preprints' },
+  { key: 'certifications', anchor: 'certifications', label: 'Certifications' },
+  { key: 'achievements', anchor: 'achievements', label: 'Achievements' },
+  { key: 'guestbook', anchor: 'guestbook', label: 'Guestbook' },
+];
+
+function isSectionVisible(visibility, key) {
+  return !visibility || visibility[key] !== false;
+}
+
+function renderNav(visibility) {
+  const links = SECTIONS.filter((sec) => isSectionVisible(visibility, sec.key))
+    .map((sec) => `<a href="#${sec.anchor}">${sec.label}</a>`)
+    .join('');
   return `
   <nav class="nav">
     <div class="nav-inner">
       <div class="nav-links">
-        <a href="#about">About</a>
-        <a href="#experience">Experience</a>
-        <a href="#education">Education</a>
-        <a href="#projects">Projects</a>
-        <a href="#opensource">Open Source</a>
-        <a href="#github">GitHub</a>
-        <a href="#blogs">Blogs</a>
-        <a href="#publications">Publications</a>
-        <a href="#preprints">Preprints</a>
-        <a href="#certifications">Certifications</a>
-        <a href="#achievements">Achievements</a>
-        <a href="#guestbook">Guestbook</a>
+        ${links}
       </div>
       <div class="nav-right">
         <span class="kbd">⌘K</span>
@@ -570,26 +586,40 @@ function initThemeToggle() {
   });
 }
 
+// Maps each SECTIONS key to the render call that produces its markup.
+// Kept separate from SECTIONS itself so the nav-link order and the
+// render functions can't drift apart.
+function renderersFor(data) {
+  return {
+    about: () => renderHero(data.settings),
+    experience: () => renderExperience(data.experience),
+    education: () => renderEducation(data.education),
+    projects: () => renderProjects(data.projects),
+    openSource: () => renderOpenSource(data.openSource),
+    github: () => renderGithub(data.githubHandle),
+    blogs: () => renderBlogs(data.blogs),
+    publications: () => renderPublications(data.publications),
+    preprints: () => renderPreprints(data.preprints),
+    certifications: () => renderCertifications(data.certifications),
+    achievements: () => renderAchievements(data.achievements),
+    guestbook: () => renderGuestbook(),
+  };
+}
+
 async function main() {
     const app = document.getElementById('app');
     try {
         const data = await loadData();
         setSiteMeta(data.settings);
+        const visibility = (data.settings && data.settings.sectionVisibility) || {};
+        const renderers = renderersFor(data);
+        const body = SECTIONS.filter((sec) => isSectionVisible(visibility, sec.key))
+            .map((sec) => renderers[sec.key]())
+            .join('\n');
         app.innerHTML = [
-            renderNav(),
+            renderNav(visibility),
             '<main>',
-            renderHero(data.settings),
-            renderExperience(data.experience),
-            renderEducation(data.education),
-            renderProjects(data.projects),
-            renderOpenSource(data.openSource),
-            renderGithub(data.githubHandle),
-            renderBlogs(data.blogs),
-            renderPublications(data.publications),
-            renderPreprints(data.preprints),
-            renderCertifications(data.certifications),
-            renderAchievements(data.achievements),
-            renderGuestbook(),
+            body,
             renderFooter(),
             '</main>',
         ].join('\n');
@@ -600,3 +630,6 @@ async function main() {
 }
 
 main();
+
+
+

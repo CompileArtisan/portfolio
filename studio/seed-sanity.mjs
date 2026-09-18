@@ -95,11 +95,15 @@ const siteSettings = {
     'for 6G networks, and President of the CodeChef ASEB Club at Amrita Vishwa Vidyapeetham (CGPA 8.82).',
   funFact: '', // TODO: not stated in either document
   email: 'praanesh.b.nair@gmail.com',
+  githubHandle: 'CompileArtisan', // powers the contribution graph in the GitHub section
   links: [
     { label: 'Portfolio', url: 'https://compileartisan.dev' },
     { label: 'GitHub', url: 'https://github.com/CompileArtisan' },
     { label: 'LinkedIn', url: 'https://linkedin.com/in/praanesh-nair' },
   ],
+  // Deliberately NOT setting sectionVisibility here — see upsertSettings()
+  // below. It's a Studio-only field: toggle sections there, and re-running
+  // this script won't touch or reset those toggles.
 };
 
 // ---------------------------------------------------------------------
@@ -325,8 +329,22 @@ async function upsert(doc, idPrefix) {
   return result;
 }
 
+// siteSettings is a singleton you also edit by hand in the Studio (e.g. the
+// sectionVisibility toggles). A plain createOrReplace would blow those away
+// on every reseed, since this script's copy of the doc doesn't know about
+// them. So: create the doc if it's missing (with no sectionVisibility, which
+// means every section defaults to visible), then PATCH just the fields this
+// script actually manages — anything set only in the Studio is left alone.
+async function upsertSettings(doc) {
+  const { _id, ...rest } = doc;
+  await client.createIfNotExists({ _id, _type: 'siteSettings' });
+  const result = await client.patch(_id).set(rest).commit();
+  console.log(`✓ siteSettings: ${_id} (merged — Studio-only fields like sectionVisibility untouched)`);
+  return result;
+}
+
 async function run() {
-  await upsert(siteSettings);
+  await upsertSettings(siteSettings);
 
   for (const doc of education) await upsert({ _type: 'education', ...doc }, 'education');
   for (const doc of experience) await upsert({ _type: 'experience', ...doc }, 'experience');
