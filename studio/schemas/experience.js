@@ -4,6 +4,19 @@ export default {
   type: 'document',
   fields: [
     { name: 'organization', title: 'Organization', type: 'string' },
+    {
+      name: 'category',
+      title: 'Category',
+      type: 'string',
+      options: {
+        list: [
+          { title: 'Research & Professional Experience', value: 'research' },
+          { title: 'Leadership & Activities', value: 'leadership' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'research',
+    },
     { name: 'logo', title: 'Logo', type: 'image' },
     { name: 'dateRange', title: 'Date range', type: 'string' },
     {
@@ -38,4 +51,7 @@ export default {
       by: [{ field: 'order', direction: 'asc' }],
     },
   ],
+  preview: {
+    select: { title: 'organization', subtitle: 'category' },
+  },
 }

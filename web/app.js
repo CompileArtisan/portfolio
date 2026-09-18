@@ -23,6 +23,75 @@ function blocksToText(blocks) {
     .join('\n\n');
 }
 
+// ---- GROQ projections -------------------------------------------------
+//
+// `file` and `image` schema fields store an asset *reference*, not a
+// usable URL. Fetching the document plain (`*[_type == "x"]`) gets you
+// back `{ asset: { _ref: "file-abc123-pdf" } }` — not a link, and not an
+// <img> src. `asset->url` (or `asset->{url, mimeType}`) dereferences the
+// reference to the real, fetchable URL. Every query below that touches a
+// file/image field does this explicitly; without it the field is
+// effectively invisible on the page no matter what's uploaded in Studio.
+
+const EXPERIENCE_QUERY = `*[_type == "experience"] | order(order asc){
+  organization,
+  dateRange,
+  lab,
+  advisorName,
+  advisorUrl,
+  bullets,
+  order,
+  "logo": logo.asset->url,
+  documents[]{
+    label,
+    "url": file.asset->url
+  }
+}`;
+
+const EDUCATION_QUERY = `*[_type == "education"] | order(order asc){
+  institution,
+  qualification,
+  dateRange,
+  scoreLabel,
+  bullets,
+  order
+}`;
+
+const PROJECT_QUERY = `*[_type == "project"] | order(order asc){
+  title,
+  description,
+  tags,
+  linkGithub,
+  linkExtra,
+  linkExtraLabel,
+  mediaAlt,
+  order,
+  "mediaUrl": media.asset->url,
+  "mediaMimeType": media.asset->mimeType
+}`;
+
+const CERTIFICATION_QUERY = `*[_type == "certification"] | order(order asc){
+  title,
+  issuer,
+  dateLabel,
+  credentialUrl,
+  order,
+  "fileUrl": file.asset->url
+}`;
+
+const ACHIEVEMENT_QUERY = `*[_type == "achievement"] | order(order asc){
+  title,
+  issuer,
+  dateLabel,
+  tier,
+  description,
+  order,
+  documents[]{
+    label,
+    "url": file.asset->url
+  }
+}`;
+
 // ---- Data loading -----------------------------------------------------
 //
 // No seed/demo fallback. Every field defaults to something empty and safe
@@ -34,6 +103,7 @@ async function loadData() {
   const [
     settings,
     experience,
+    education,
     projects,
     openSource,
     blogs,
@@ -43,14 +113,15 @@ async function loadData() {
     achievements,
   ] = await Promise.all([
     sanityFetch('*[_type == "siteSettings"][0]').catch(() => null),
-    sanityFetch('*[_type == "experience"] | order(order asc)').catch(() => []),
-    sanityFetch('*[_type == "project"] | order(order asc)').catch(() => []),
+    sanityFetch(EXPERIENCE_QUERY).catch(() => []),
+    sanityFetch(EDUCATION_QUERY).catch(() => []),
+    sanityFetch(PROJECT_QUERY).catch(() => []),
     sanityFetch('*[_type == "openSourceContribution"] | order(mergedAt desc)').catch(() => []),
     sanityFetch('*[_type == "blogPost"] | order(_createdAt desc)').catch(() => []),
     sanityFetch('*[_type == "publication"] | order(_createdAt desc)').catch(() => []),
     sanityFetch('*[_type == "preprint"] | order(_createdAt desc)').catch(() => []),
-    sanityFetch('*[_type == "certification"] | order(order asc)').catch(() => []),
-    sanityFetch('*[_type == "achievement"] | order(order asc)').catch(() => []),
+    sanityFetch(CERTIFICATION_QUERY).catch(() => []),
+    sanityFetch(ACHIEVEMENT_QUERY).catch(() => []),
   ]);
 
   return {
@@ -66,6 +137,7 @@ async function loadData() {
         }
       : null,
     experience: (experience || []).map(normalizeExperience),
+    education: education || [],
     projects: (projects || []).map(normalizeProject),
     openSource: openSource || [],
     blogs: (blogs || []).map((b) => ({ ...b, url: b.slug ? `/blog/${b.slug.current}` : b.url || '#' })),
@@ -106,6 +178,7 @@ function renderNav() {
       <div class="nav-links">
         <a href="#about">About</a>
         <a href="#experience">Experience</a>
+        <a href="#education">Education</a>
         <a href="#projects">Projects</a>
         <a href="#opensource">Open Source</a>
         <a href="#github">GitHub</a>
@@ -159,7 +232,8 @@ function renderExperience(items) {
   const rows = items
     .map((e) => {
       const docs = (e.documents || [])
-        .map((d) => `<a href="${d.url || d.file || '#'}" target="_blank" rel="noopener">${d.label}</a>`)
+        .filter((d) => d.url)
+        .map((d) => `<a href="${d.url}" target="_blank" rel="noopener">${d.label || 'document'}</a>`)
         .join(', ');
       const bullets = (e.bullets || []).map((b) => `<li>${b}</li>`).join('');
       return `
@@ -182,6 +256,33 @@ function renderExperience(items) {
   </section>`;
 }
 
+function renderEducation(items) {
+  if (!items.length) {
+    return `
+    <section class="block" id="education">
+      <h2>Education</h2>
+      ${emptyState('Nothing here yet — add "Education" documents in the Studio.')}
+    </section>`;
+  }
+  const rows = items
+    .map((ed) => {
+      const bullets = (ed.bullets || []).map((b) => (typeof b === 'string' ? b : blocksToText([b])));
+      return `
+      <div class="entry">
+        <h3>${ed.institution || ''}</h3>
+        <div class="meta">${ed.qualification || ''}${ed.dateRange ? ', ' + ed.dateRange : ''}${ed.scoreLabel ? ' · ' + ed.scoreLabel : ''}</div>
+        ${bullets.length ? `<ul class="exp-bullets">${bullets.map((b) => `<li>${b}</li>`).join('')}</ul>` : ''}
+      </div>`;
+    })
+    .join('');
+  return `
+  <section class="block" id="education">
+    <h2>Education</h2>
+    <p class="block-sub">Where I've studied.</p>
+    ${rows}
+  </section>`;
+}
+
 function renderProjects(items) {
   if (!items.length) {
     return `
@@ -199,10 +300,17 @@ function renderProjects(items) {
       ]
         .filter(Boolean)
         .join('');
+      const isVideo = (p.mediaMimeType || '').startsWith('video/');
+      const media = p.mediaUrl
+        ? isVideo
+          ? `<video class="project-media" src="${p.mediaUrl}" controls playsinline></video>`
+          : `<img class="project-media" src="${p.mediaUrl}" alt="${p.mediaAlt || p.title || ''}" />`
+        : '';
       return `
       <div class="project">
         <h3>${p.title || ''}</h3>
         ${tags ? `<div class="tags">${tags}</div>` : ''}
+        ${media}
         ${p.description ? `<p>${p.description}</p>` : ''}
         ${links ? `<div class="project-links">${links}</div>` : ''}
       </div>`;
@@ -227,7 +335,7 @@ function renderOpenSource(items) {
   const rows = items
     .map(
       (o) =>
-        `<li><a href="${o.url}" target="_blank" rel="noopener">${o.repo} — ${o.prLabel}</a></li>`
+        `<li><a href="${o.url}" target="_blank" rel="noopener">${o.repo} — ${o.prLabel}</a>${o.organization ? `<span class="oss-org">${o.organization}</span>` : ''}</li>`
     )
     .join('');
   return `
@@ -243,7 +351,7 @@ function renderGithub(handle) {
     return `
     <section class="block" id="github">
       <h2>GitHub</h2>
-      ${emptyState('Add a "githubHandle" field to Site Settings to show your contribution graph here.')}
+      ${emptyState('Add a GitHub username in Site Settings to show your contribution graph here.')}
     </section>`;
   }
   return `
@@ -349,13 +457,19 @@ function renderCertifications(items) {
     </section>`;
   }
   const rows = items
-    .map(
-      (c) => `
+    .map((c) => {
+      const links = [
+        c.credentialUrl ? `<a href="${c.credentialUrl}" target="_blank" rel="noopener">credential</a>` : '',
+        c.fileUrl ? `<a href="${c.fileUrl}" target="_blank" rel="noopener">certificate</a>` : '',
+      ]
+        .filter(Boolean)
+        .join(' · ');
+      return `
       <div class="entry">
         <h3>${c.title || ''}</h3>
-        <div class="meta">${c.issuer || ''}${c.dateLabel ? ', ' + c.dateLabel : ''}${c.credentialUrl ? ' · <a href="' + c.credentialUrl + '" target="_blank" rel="noopener">credential</a>' : ''}</div>
-      </div>`
-    )
+        <div class="meta">${c.issuer || ''}${c.dateLabel ? ', ' + c.dateLabel : ''}${links ? ' · ' + links : ''}</div>
+      </div>`;
+    })
     .join('');
   return `
   <section class="block" id="certifications">
@@ -374,14 +488,18 @@ function renderAchievements(items) {
     </section>`;
   }
   const rows = items
-    .map(
-      (a) => `
+    .map((a) => {
+      const docs = (a.documents || [])
+        .filter((d) => d.url)
+        .map((d) => `<a href="${d.url}" target="_blank" rel="noopener">${d.label || 'document'}</a>`)
+        .join(', ');
+      return `
       <div class="entry">
         <h3>${a.title || ''}${a.tier ? ' <span class="meta" style="display:inline">(' + a.tier + ')</span>' : ''}</h3>
-        <div class="meta">${a.issuer || ''}${a.dateLabel ? ', ' + a.dateLabel : ''}</div>
+        <div class="meta">${a.issuer || ''}${a.dateLabel ? ', ' + a.dateLabel : ''}${docs ? ' · ' + docs : ''}</div>
         ${a.descriptionText ? `<p>${a.descriptionText}</p>` : ''}
-      </div>`
-    )
+      </div>`;
+    })
     .join('');
   return `
   <section class="block" id="achievements">
@@ -417,6 +535,27 @@ function renderError(message) {
   </div>`;
 }
 
+// ---- Meta (title / description) -----------------------------------------
+//
+// index.html ships a generic placeholder title/description as a pre-JS
+// fallback. Once Site Settings loads, this overwrites both from real
+// data — no more hardcoded name baked into the HTML.
+
+function setSiteMeta(s) {
+  if (!s) return;
+  document.title = s.name ? `${s.name}${s.eyebrow ? ' — ' + s.eyebrow : ''}` : document.title;
+  const descText = s.bioText || s.status || '';
+  if (descText) {
+    let meta = document.querySelector('meta[name="description"]');
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.setAttribute('name', 'description');
+      document.head.appendChild(meta);
+    }
+    meta.setAttribute('content', descText);
+  }
+}
+
 // ---- Boot -----------------------------------------------------------------
 
 function initThemeToggle() {
@@ -435,11 +574,13 @@ async function main() {
     const app = document.getElementById('app');
     try {
         const data = await loadData();
+        setSiteMeta(data.settings);
         app.innerHTML = [
             renderNav(),
             '<main>',
             renderHero(data.settings),
             renderExperience(data.experience),
+            renderEducation(data.education),
             renderProjects(data.projects),
             renderOpenSource(data.openSource),
             renderGithub(data.githubHandle),

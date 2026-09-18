@@ -1,22 +1,26 @@
 // seed-sanity.mjs
 //
 // Pushes your real content into the Sanity dataset, shaped exactly to the
-// schemas in studio/schemas/ (siteSettings, experience, project,
+// schemas in studio/schemas/ (siteSettings, experience, education, project,
 // publication, openSourceContribution, blogPost, preprint, certification,
 // achievement).
 //
 // Merged from resume.tex AND cv.tex. Where they disagreed (GPA, wording),
-// cv.tex was treated as the more recent/authoritative one.
+// cv.tex was previously treated as authoritative for the "8.88" figure, but
+// resume.tex (the most recently supplied copy) says 8.82 — went with 8.82
+// here. Double check which is actually current.
 //
-// UPDATE from the previous version of this script: certifications and
-// achievements/honors now have schema types (studio/schemas/certification.js,
-// studio/schemas/achievement.js) and are seeded below.
-//
-// STILL NOT included below because there's no matching schema type yet:
-//   - Education (Amrita Vishwa Vidyapeetham B.Tech, + two prior schools —
-//     Sri Chaitanya Techno School, Jaigopal Garodia Rashtrotthana Vidya
-//     Kendra). Add a studio/schemas/education.js (+ render function in
-//     app.js) if you want this on the site — happy to write it if you want.
+// UPDATE from the previous version of this script:
+//   - Education is now seeded (studio/schemas/education.js already existed
+//     and was already wired into web/app.js — it just wasn't being filled).
+//   - experience.js schema gained a `category` field ('research' vs
+//     'leadership') so club/organizing roles are tagged separately from
+//     research & work experience, matching the "Leadership and Activities"
+//     section in resume.tex. You'll need a matching small update to
+//     web/app.js (GROQ query + renderExperience) to group by it on the
+//     live site — see the snippet Claude gave you alongside this file.
+//   - Added two more projects: your Doom Emacs config repo, and the
+//     notes.compileartisan.dev static-notes build.
 //
 // ---------------------------------------------------------------------
 // SETUP
@@ -88,7 +92,7 @@ const siteSettings = {
   ),
   status:
     'Currently a Research Intern at Samsung PRISM, working on graph neural network-based radio map modeling ' +
-    'for 6G networks, and President of the CodeChef ASEB Club at Amrita Vishwa Vidyapeetham (CGPA 8.88).',
+    'for 6G networks, and President of the CodeChef ASEB Club at Amrita Vishwa Vidyapeetham (CGPA 8.82).',
   funFact: '', // TODO: not stated in either document
   email: 'praanesh.b.nair@gmail.com',
   links: [
@@ -98,9 +102,48 @@ const siteSettings = {
   ],
 };
 
+// ---------------------------------------------------------------------
+// EDUCATION — from resume.tex "Education" section
+// ---------------------------------------------------------------------
+
+const education = [
+  {
+    institution: 'Amrita Vishwa Vidyapeetham, Bengaluru',
+    qualification: 'B.Tech, Computer Science and Engineering with Artificial Intelligence',
+    dateRange: 'Aug 2023 – Present',
+    scoreLabel: 'CGPA: 8.82/10.0',
+    bullets: [],
+    order: 1,
+  },
+  {
+    institution: 'Sri Chaitanya Techno School, Bangalore',
+    qualification: 'Senior Secondary Education (CBSE Board)',
+    dateRange: '2021 – 2023',
+    scoreLabel: '83.4% (417/500)',
+    bullets: [],
+    order: 2,
+  },
+  {
+    institution: 'Jaigopal Garodia Rashtrotthana Vidya Kendra, Bengaluru',
+    qualification: 'Secondary Education (CBSE Board)',
+    dateRange: '2014 – 2021',
+    scoreLabel: '94.0% (470/500)',
+    bullets: [],
+    order: 3,
+  },
+];
+
+// ---------------------------------------------------------------------
+// EXPERIENCE — `category` distinguishes research/work from club &
+// organizing roles, matching resume.tex's separate "Leadership and
+// Activities" section. Requires the `category` field added to
+// studio/schemas/experience.js.
+// ---------------------------------------------------------------------
+
 const experience = [
   {
     organization: 'Research Intern — Samsung PRISM (PReparing and Inspiring Student Minds)',
+    category: 'research',
     dateRange: '2026 – Present',
     lab: '',
     advisorName: '',
@@ -114,6 +157,7 @@ const experience = [
   },
   {
     organization: 'President, CodeChef ASEB Club — Amrita Vishwa Vidyapeetham',
+    category: 'leadership',
     dateRange: '2025 – Present',
     lab: '',
     advisorName: '',
@@ -125,6 +169,7 @@ const experience = [
   {
     organization:
       'Event Lead, "Write Your Own Programming Language" Workshop — Dastaan Multifest, Amrita Vishwa Vidyapeetham',
+    category: 'leadership',
     dateRange: '2025',
     lab: '',
     advisorName: '',
@@ -175,6 +220,31 @@ const projects = [
     linkExtra: '',
     linkExtraLabel: '',
     order: 3,
+  },
+  {
+    title: 'Doom Emacs Configuration',
+    tags: ['Emacs Lisp', 'Doom Emacs', 'Org-mode', 'Linux (Arch)'],
+    description: textBlock(
+      'Personal Doom Emacs configuration used as a daily-driver development environment — layout, keybindings, ' +
+        'and package setup tuned for Org-mode-centric writing and coding workflows.'
+    ),
+    linkGithub: 'https://github.com/CompileArtisan/doom-emacs-configuration',
+    linkExtra: '',
+    linkExtraLabel: '',
+    order: 4,
+  },
+  {
+    title: 'notes.compileartisan.dev — Org-mode Notes Site',
+    tags: ['Emacs Lisp', 'Org-mode', 'Shell', 'Static Site Generation'],
+    description: textBlock(
+      'A notes site built directly from subjectname/index.org files, converted to HTML via Emacs\u2019 native ' +
+        'org-to-HTML export. A build-time script walks the repo, discovers every index.org, and generates the ' +
+        'listing page (as seen on notes.compileartisan.dev) with no external static-site generator involved.'
+    ),
+    linkGithub: 'https://github.com/CompileArtisan/notes.compileartisan.dev',
+    linkExtra: 'https://notes.compileartisan.dev',
+    linkExtraLabel: 'Live site',
+    order: 5,
   },
 ];
 
@@ -248,7 +318,7 @@ const preprints = [];
 // ---------------------------------------------------------------------
 
 async function upsert(doc, idPrefix) {
-  const _id = doc._id || `${idPrefix}-${slugify(doc.title || doc.organization || doc.repo)}`;
+  const _id = doc._id || `${idPrefix}-${slugify(doc.title || doc.organization || doc.institution || doc.repo)}`;
   const { _id: _ignore, ...rest } = doc;
   const result = await client.createOrReplace({ _id, ...rest });
   console.log(`✓ ${result._type}: ${_id}`);
@@ -258,6 +328,7 @@ async function upsert(doc, idPrefix) {
 async function run() {
   await upsert(siteSettings);
 
+  for (const doc of education) await upsert({ _type: 'education', ...doc }, 'education');
   for (const doc of experience) await upsert({ _type: 'experience', ...doc }, 'experience');
   for (const doc of projects) await upsert({ _type: 'project', ...doc }, 'project');
   for (const doc of publications) await upsert({ _type: 'publication', ...doc }, 'publication');
