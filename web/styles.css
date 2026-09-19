@@ -139,6 +139,18 @@ section.block h2 {
 .block-sub { color: var(--ink-soft); font-size: 0.95rem; margin: 0 0 1.6rem; }
 
 /* experience */
+.exp-subhead {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin: 0 0 1.1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--rule);
+}
+.exp-subhead:not(:first-child) { margin-top: 2.4rem; }
 .exp-item { display: grid; grid-template-columns: 44px 1fr; gap: 1rem; margin-bottom: 2.1rem; }
 .exp-item:last-child { margin-bottom: 0; }
 .exp-logo {
@@ -217,3 +229,5 @@ footer {
   .hero h1 { font-size: 2.1rem; }
   .nav-links { gap: 0.8rem; }
 }
+
+

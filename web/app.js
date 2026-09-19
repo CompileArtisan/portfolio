@@ -35,6 +35,7 @@ function blocksToText(blocks) {
 
 const EXPERIENCE_QUERY = `*[_type == "experience"] | order(order asc){
   organization,
+  category,
   dateRange,
   lab,
   advisorName,
@@ -233,10 +234,33 @@ function renderHero(s) {
     ${links ? `<div class="links-row">${links}</div>` : ''}
     ${s.status ? `<p class="status">${s.status}</p>` : ''}
     ${s.funFact ? `<p class="fun">${s.funFact}</p>` : ''}
-    ${s.email ? `<p class="email-line">Reach me at ${s.email.replace('@', ' [at] ').replace('.', ' [dot] ')}</p>` : ''}
+    ${s.email ? `<p class="email-line">Reach me at ${s.email.replace(/@/g, ' [at] ').replace(/\./g, ' [dot] ')}</p>` : ''}
   </section>`;
 }
 
+function renderExperienceItem(e) {
+  const docs = (e.documents || [])
+    .filter((d) => d.url)
+    .map((d) => `<a href="${d.url}" target="_blank" rel="noopener">${d.label || 'document'}</a>`)
+    .join(', ');
+  const bullets = (e.bullets || []).map((b) => `<li>${b}</li>`).join('');
+  return `
+  <div class="exp-item">
+    <div class="exp-logo">${e.logo ? `<img src="${e.logo}" alt="${e.organization} logo" />` : (e.organization || '').slice(0, 2).toUpperCase()}</div>
+    <div>
+      <div class="exp-head"><span class="exp-org">${e.organization || ''}</span></div>
+      <div class="exp-meta">${e.dateRange || ''}${docs ? ' · [' + docs + ']' : ''}</div>
+      ${e.advisorName ? `<div class="exp-advisor">${e.lab ? e.lab + ' · ' : ''}Advisor: <a href="${e.advisorUrl || '#'}" target="_blank" rel="noopener">${e.advisorName}</a></div>` : ''}
+      ${bullets ? `<ul class="exp-bullets">${bullets}</ul>` : ''}
+    </div>
+  </div>`;
+}
+
+// Research/work experience and club/organizing roles render as two visibly
+// separate groups (each with its own sub-heading), driven by the
+// `category` field on the experience document ('research' | 'leadership').
+// Anything with no category set (older documents) falls into "research" so
+// nothing silently disappears.
 function renderExperience(items) {
   if (!items.length) {
     return `
@@ -245,30 +269,22 @@ function renderExperience(items) {
       ${emptyState('Nothing here yet — add "Experience" documents in the Studio.')}
     </section>`;
   }
-  const rows = items
-    .map((e) => {
-      const docs = (e.documents || [])
-        .filter((d) => d.url)
-        .map((d) => `<a href="${d.url}" target="_blank" rel="noopener">${d.label || 'document'}</a>`)
-        .join(', ');
-      const bullets = (e.bullets || []).map((b) => `<li>${b}</li>`).join('');
-      return `
-      <div class="exp-item">
-        <div class="exp-logo">${e.logo ? `<img src="${e.logo}" alt="${e.organization} logo" />` : (e.organization || '').slice(0, 2).toUpperCase()}</div>
-        <div>
-          <div class="exp-head"><span class="exp-org">${e.organization || ''}</span></div>
-          <div class="exp-meta">${e.dateRange || ''}${docs ? ' · [' + docs + ']' : ''}</div>
-          ${e.advisorName ? `<div class="exp-advisor">${e.lab ? e.lab + ' · ' : ''}Advisor: <a href="${e.advisorUrl || '#'}" target="_blank" rel="noopener">${e.advisorName}</a></div>` : ''}
-          ${bullets ? `<ul class="exp-bullets">${bullets}</ul>` : ''}
-        </div>
-      </div>`;
-    })
-    .join('');
+  const research = items.filter((e) => e.category !== 'leadership');
+  const leadership = items.filter((e) => e.category === 'leadership');
+
+  const researchBlock = research.length
+    ? `<h3 class="exp-subhead">Research &amp; Professional Experience</h3>${research.map(renderExperienceItem).join('')}`
+    : '';
+  const leadershipBlock = leadership.length
+    ? `<h3 class="exp-subhead">Leadership &amp; Activities</h3>${leadership.map(renderExperienceItem).join('')}`
+    : '';
+
   return `
   <section class="block" id="experience">
     <h2>Experience</h2>
     <p class="block-sub">Where I've worked.</p>
-    ${rows}
+    ${researchBlock}
+    ${leadershipBlock}
   </section>`;
 }
 
