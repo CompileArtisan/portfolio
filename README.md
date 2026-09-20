@@ -77,16 +77,4 @@ Deploy `web/` anywhere that serves static files (Vercel, Netlify, GitHub
 Pages, Cloudflare Pages). Deploy the Studio separately with
 `npx sanity deploy` from `studio/`, or run it locally only.
 
-## Notes on the replica
 
-- All text content below was taken from the current public page
-  (arneshbanerjee.dev) and is included as seed/demo data — replace it with
-  your own content in the Studio.
-- PDFs, certificates, logos, and the project demo video referenced by the
-  original site aren't included here (they're not part of the page's
-  markup); the schema has fields ready for them (`file`/`image` types) —
-  upload your own copies through the Studio.
-- Visual design (colors, type, spacing) is a close, from-scratch
-  recreation of the layout and structure — a single-column CV-style page,
-  sticky anchor nav, light/dark theme — rather than a pixel-for-pixel copy
-  of the original CSS, which wasn't accessible to fetch directly.
