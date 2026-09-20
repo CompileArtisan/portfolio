@@ -12,18 +12,35 @@
 ```bash
 cd studio
 npm install
+cp .env.example .env      # then fill in SANITY_STUDIO_PROJECT_ID/_DATASET
 npx sanity login          # if you haven't already
 npx sanity init --env     # links this folder to a Sanity project + dataset
-                           # (or manually set projectId/dataset below)
+                           # (or just edit .env manually)
 npm run dev                # opens the Studio at localhost:3333
 ```
+
+`studio/sanity.config.js` reads the project ID/dataset from `.env` (via
+`SANITY_STUDIO_PROJECT_ID` / `SANITY_STUDIO_DATASET`) so no project ID is
+hardcoded in the source — `.env` is gitignored, only `.env.example` is
+committed. When deploying the Studio itself (`npx sanity deploy`), set the
+same two variables as build-time env vars on whatever CI/host runs the
+build, or keep a local `.env` if you're deploying from your machine.
 
 Open the Studio, and for each schema type create documents with your real
 content (Site Settings is a singleton — create exactly one).
 
 ## 2. Point the frontend at your project
 
-Edit `web/config.js`:
+The frontend has no build step, so it can't read `.env` at request time —
+instead it reads `web/config.js`, which is gitignored so your project ID
+never ends up in the repo.
+
+```bash
+cd web
+cp config.example.js config.js
+```
+
+Then edit `web/config.js`:
 
 ```js
 window.SANITY_CONFIG = {
@@ -34,11 +51,18 @@ window.SANITY_CONFIG = {
 };
 ```
 
-Also update `studio/sanity.config.js` with the same `projectId`/`dataset`.
+When you deploy `web/` (Vercel, Netlify, GitHub Pages, Cloudflare Pages),
+make sure `config.js` is actually present in the deployed output — since
+it's gitignored, either upload it as part of your deploy step, or add it
+as a build artifact/secret file on your hosting platform rather than
+committing it.
 
 By default new Sanity datasets are private. Either make the dataset
 public (Studio → API settings) or add a read token and pass it through a
-small serverless proxy — don't ship a write token to the browser.
+small serverless proxy — don't ship a write token to the browser. (The
+project ID itself isn't a secret — Sanity's client-side API always needs
+it in the URL — but keeping it out of the repo means anyone forking this
+template starts from a clean slate instead of pointing at your dataset.)
 
 ## 3. Run the frontend
 

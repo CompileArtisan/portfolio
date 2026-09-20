@@ -1,6 +1,13 @@
-.DS_Store
-.idea
-*.log
-tmp/
-studio/node_modules
+# Studio
+studio/node_modules/
+studio/dist/
+studio/.sanity/
+studio/.env
+studio/.env.*
+!studio/.env.example
 
+# Web — real config holds your Sanity project ID, keep it local only
+web/config.js
+
+# OS/editor
+.DS_Store

@@ -7,11 +7,12 @@ export default defineConfig({
     name: "default",
     title: "Portfolio CMS",
 
-    // Replace with your own project ID + dataset (from sanity.io/manage
-    // or `sanity init` — this scaffold does not run against a live project
-    // until you fill these in).
-    projectId: "hob493ap",
-    dataset: "production",
+    // Reads from .env (see .env.example) so no project ID is committed to
+    // the repo. Sanity Studio (Vite-based) only exposes env vars prefixed
+    // with SANITY_STUDIO_ — set SANITY_STUDIO_PROJECT_ID / _DATASET in a
+    // local .env file, or as build-time env vars on your host.
+    projectId: process.env.SANITY_STUDIO_PROJECT_ID || "your-project-id",
+    dataset: process.env.SANITY_STUDIO_DATASET || "production",
 
     plugins: [structureTool(), visionTool()],
 
