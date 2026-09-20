@@ -16,6 +16,12 @@ export default {
       type: 'string',
     },
     {
+      name: 'ogImage',
+      title: 'Open Graph Image',
+      type: 'image',
+      description: 'Shown as the preview image when the site is shared on social media, Slack, iMessage, etc. Recommended size 1200×630px.',
+    },
+    {
       name: 'links',
       title: 'Header links (Resume, GitHub, LinkedIn...)',
       type: 'array',
