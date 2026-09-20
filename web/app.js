@@ -442,7 +442,7 @@ function renderPublications(items) {
       <div class="entry">
         <h3>${p.title || ''}${p.presentationType ? ' <span class="meta" style="display:inline">(' + p.presentationType + ')</span>' : ''}</h3>
         ${authorsLine(p.authors) ? `<div class="authors">${authorsLine(p.authors)}</div>` : ''}
-        <div class="meta">${p.venue || ''}${p.dateLabel ? ', ' + p.dateLabel : ''}${p.certificateUrl ? ' · <a href="' + p.certificateUrl + '" target="_blank" rel="noopener">certificate</a>' : ''}</div>
+        <div class="meta">${p.venue || ''}${p.dateLabel ? ', ' + p.dateLabel : ''}${p.paperUrl ? ' · <a href="' + p.paperUrl + '" target="_blank" rel="noopener">link</a>' : ''}</div>
       </div>`
     )
     .join('');
