@@ -192,7 +192,7 @@ section.block h2 {
 /* github */
 .gh-chart { max-width: 100%; border-radius: 6px; border: 1px solid var(--rule); }
 
-/* lists: blogs / publications / preprints */
+/* lists: blogs / publications / preprints / talks / patents / skills */
 .entry { padding: 1rem 0; border-bottom: 1px solid var(--rule); }
 .entry:last-child { border-bottom: none; }
 .entry h3 { font-size: 1.05rem; margin: 0 0 0.35rem; }
@@ -200,6 +200,7 @@ section.block h2 {
 .entry p { font-size: 0.93rem; margin: 0; color: var(--ink-soft); }
 .entry .authors { font-size: 0.92rem; margin-top: 0.3rem; }
 .entry .authors b { color: var(--ink); }
+.entry .tags { margin-bottom: 0; }
 
 /* guestbook */
 .guestbook-box {
@@ -220,7 +221,7 @@ footer {
   font-size: 0.78rem;
   color: var(--ink-soft);
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 1rem;
   flex-wrap: wrap;
 }
@@ -229,5 +230,3 @@ footer {
   .hero h1 { font-size: 2.1rem; }
   .nav-links { gap: 0.8rem; }
 }
-
-

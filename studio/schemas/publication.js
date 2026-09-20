@@ -25,6 +25,11 @@ export default {
                 },
             ],
         },
-        { name: "paperUrl", title: "Paper URL", type: "url" },
+        {
+            name: "paperUrl",
+            title: "Paper link",
+            type: "link",
+            description: "Link to the published paper OR upload the PDF directly.",
+        },
     ],
 };

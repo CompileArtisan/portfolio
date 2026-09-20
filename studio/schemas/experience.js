@@ -35,7 +35,12 @@ export default {
     },
     { name: 'lab', title: 'Lab / group', type: 'string' },
     { name: 'advisorName', title: 'Advisor name', type: 'string' },
-    { name: 'advisorUrl', title: 'Advisor URL', type: 'url' },
+    {
+      name: 'advisorUrl',
+      title: 'Advisor link',
+      type: 'link',
+      description: "Link to the advisor's page OR upload a bio/reference file directly.",
+    },
     {
       name: 'bullets',
       title: 'Technical detail bullets',

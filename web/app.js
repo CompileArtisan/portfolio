@@ -32,6 +32,15 @@ function blocksToText(blocks) {
 // reference to the real, fetchable URL. Every query below that touches a
 // file/image field does this explicitly; without it the field is
 // effectively invisible on the page no matter what's uploaded in Studio.
+//
+// Fields whose schema type is `link` (an object with an `url` string OR
+// an uploaded `file`) resolve the same way, via a small helper:
+// `coalesce(x.file.asset->url, x.url)` — if an editor uploaded a file,
+// that wins; otherwise fall back to the external URL they typed in.
+
+function linkField(fieldName, alias) {
+  return `"${alias || fieldName}": coalesce(${fieldName}.file.asset->url, ${fieldName}.url)`;
+}
 
 const EXPERIENCE_QUERY = `*[_type == "experience"] | order(order asc){
   organization,
@@ -39,7 +48,7 @@ const EXPERIENCE_QUERY = `*[_type == "experience"] | order(order asc){
   dateRange,
   lab,
   advisorName,
-  advisorUrl,
+  ${linkField('advisorUrl')},
   bullets,
   order,
   "logo": logo.asset->url,
@@ -58,12 +67,18 @@ const EDUCATION_QUERY = `*[_type == "education"] | order(order asc){
   order
 }`;
 
+const SKILL_QUERY = `*[_type == "skill"] | order(order asc){
+  category,
+  items,
+  order
+}`;
+
 const PROJECT_QUERY = `*[_type == "project"] | order(order asc){
   title,
   description,
   tags,
-  linkGithub,
-  linkExtra,
+  ${linkField('linkGithub')},
+  ${linkField('linkExtra')},
   linkExtraLabel,
   mediaAlt,
   order,
@@ -71,11 +86,48 @@ const PROJECT_QUERY = `*[_type == "project"] | order(order asc){
   "mediaMimeType": media.asset->mimeType
 }`;
 
+const OPEN_SOURCE_QUERY = `*[_type == "openSourceContribution"] | order(mergedAt desc){
+  repo,
+  prLabel,
+  organization,
+  mergedAt,
+  ${linkField('url')}
+}`;
+
+const PUBLICATION_QUERY = `*[_type == "publication"] | order(_createdAt desc){
+  title,
+  venue,
+  dateLabel,
+  presentationType,
+  authors,
+  ${linkField('paperUrl')}
+}`;
+
+const TALK_QUERY = `*[_type == "talk"] | order(order asc){
+  title,
+  venue,
+  dateLabel,
+  talkType,
+  description,
+  ${linkField('link')},
+  order
+}`;
+
+const PATENT_QUERY = `*[_type == "patent"] | order(order asc){
+  title,
+  status,
+  patentNumber,
+  dateLabel,
+  inventors,
+  ${linkField('link')},
+  order
+}`;
+
 const CERTIFICATION_QUERY = `*[_type == "certification"] | order(order asc){
   title,
   issuer,
   dateLabel,
-  credentialUrl,
+  ${linkField('credentialUrl')},
   order,
   "fileUrl": file.asset->url
 }`;
@@ -93,6 +145,14 @@ const ACHIEVEMENT_QUERY = `*[_type == "achievement"] | order(order asc){
   }
 }`;
 
+const SITE_SETTINGS_QUERY = `*[_type == "siteSettings"][0]{
+  ...,
+  "links": links[]{
+    label,
+    ${linkField('url')}
+  }
+}`;
+
 // ---- Data loading -----------------------------------------------------
 //
 // No seed/demo fallback. Every field defaults to something empty and safe
@@ -105,22 +165,28 @@ async function loadData() {
     settings,
     experience,
     education,
+    skills,
     projects,
     openSource,
     blogs,
     publications,
     preprints,
+    talks,
+    patents,
     certifications,
     achievements,
   ] = await Promise.all([
-    sanityFetch('*[_type == "siteSettings"][0]').catch(() => null),
+    sanityFetch(SITE_SETTINGS_QUERY).catch(() => null),
     sanityFetch(EXPERIENCE_QUERY).catch(() => []),
     sanityFetch(EDUCATION_QUERY).catch(() => []),
+    sanityFetch(SKILL_QUERY).catch(() => []),
     sanityFetch(PROJECT_QUERY).catch(() => []),
-    sanityFetch('*[_type == "openSourceContribution"] | order(mergedAt desc)').catch(() => []),
+    sanityFetch(OPEN_SOURCE_QUERY).catch(() => []),
     sanityFetch('*[_type == "blogPost"] | order(_createdAt desc)').catch(() => []),
-    sanityFetch('*[_type == "publication"] | order(_createdAt desc)').catch(() => []),
+    sanityFetch(PUBLICATION_QUERY).catch(() => []),
     sanityFetch('*[_type == "preprint"] | order(_createdAt desc)').catch(() => []),
+    sanityFetch(TALK_QUERY).catch(() => []),
+    sanityFetch(PATENT_QUERY).catch(() => []),
     sanityFetch(CERTIFICATION_QUERY).catch(() => []),
     sanityFetch(ACHIEVEMENT_QUERY).catch(() => []),
   ]);
@@ -140,11 +206,14 @@ async function loadData() {
       : null,
     experience: (experience || []).map(normalizeExperience),
     education: education || [],
+    skills: skills || [],
     projects: (projects || []).map(normalizeProject),
     openSource: openSource || [],
     blogs: (blogs || []).map((b) => ({ ...b, url: b.slug ? `/blog/${b.slug.current}` : b.url || '#' })),
     publications: publications || [],
     preprints: preprints || [],
+    talks: (talks || []).map(normalizeTalk),
+    patents: patents || [],
     certifications: certifications || [],
     achievements: (achievements || []).map(normalizeAchievement),
     githubHandle: (settings && settings.githubHandle) || '',
@@ -159,6 +228,9 @@ function normalizeProject(p) {
 }
 function normalizeAchievement(a) {
   return { ...a, descriptionText: blocksToText(a.description) };
+}
+function normalizeTalk(t) {
+  return { ...t, descriptionText: blocksToText(t.description) };
 }
 
 // ---- Rendering ----------------------------------------------------------
@@ -181,12 +253,15 @@ const SECTIONS = [
   { key: 'about', anchor: 'about', label: 'About' },
   { key: 'experience', anchor: 'experience', label: 'Experience' },
   { key: 'education', anchor: 'education', label: 'Education' },
+  { key: 'skills', anchor: 'skills', label: 'Skills' },
   { key: 'projects', anchor: 'projects', label: 'Projects' },
   { key: 'openSource', anchor: 'opensource', label: 'Open Source' },
   { key: 'github', anchor: 'github', label: 'GitHub' },
   { key: 'blogs', anchor: 'blogs', label: 'Blogs' },
   { key: 'publications', anchor: 'publications', label: 'Publications' },
   { key: 'preprints', anchor: 'preprints', label: 'Preprints' },
+  { key: 'talks', anchor: 'talks', label: 'Talks' },
+  { key: 'patents', anchor: 'patents', label: 'Patents' },
   { key: 'certifications', anchor: 'certifications', label: 'Certifications' },
   { key: 'achievements', anchor: 'achievements', label: 'Achievements' },
   { key: 'guestbook', anchor: 'guestbook', label: 'Guestbook' },
@@ -224,6 +299,7 @@ function renderHero(s) {
     </section>`;
   }
   const links = (s.links || [])
+    .filter((l) => l.url)
     .map((l) => `<a href="${l.url}" target="_blank" rel="noopener">${l.label}</a>`)
     .join('');
   return `
@@ -311,6 +387,32 @@ function renderEducation(items) {
   <section class="block" id="education">
     <h2>Education</h2>
     <p class="block-sub">Where I've studied.</p>
+    ${rows}
+  </section>`;
+}
+
+function renderSkills(items) {
+  if (!items.length) {
+    return `
+    <section class="block" id="skills">
+      <h2>Skills</h2>
+      ${emptyState('Nothing here yet — add "Skill Category" documents in the Studio.')}
+    </section>`;
+  }
+  const rows = items
+    .map((s) => {
+      const tags = (s.items || []).map((i) => `<span class="tag">${i}</span>`).join('');
+      return `
+      <div class="entry">
+        <h3>${s.category || ''}</h3>
+        ${tags ? `<div class="tags">${tags}</div>` : ''}
+      </div>`;
+    })
+    .join('');
+  return `
+  <section class="block" id="skills">
+    <h2>Skills</h2>
+    <p class="block-sub">Languages, frameworks, and tools.</p>
     ${rows}
   </section>`;
 }
@@ -480,6 +582,58 @@ function renderPreprints(items) {
   </section>`;
 }
 
+function renderTalks(items) {
+  if (!items.length) {
+    return `
+    <section class="block" id="talks">
+      <h2>Talks</h2>
+      ${emptyState('Nothing here yet — add "Talk / Presentation" documents in the Studio.')}
+    </section>`;
+  }
+  const rows = items
+    .map(
+      (t) => `
+      <div class="entry">
+        <h3>${t.title || ''}${t.talkType ? ' <span class="meta" style="display:inline">(' + t.talkType + ')</span>' : ''}</h3>
+        <div class="meta">${t.venue || ''}${t.dateLabel ? ', ' + t.dateLabel : ''}${t.link ? ' · <a href="' + t.link + '" target="_blank" rel="noopener">slides / recording</a>' : ''}</div>
+        ${t.descriptionText ? `<p>${t.descriptionText}</p>` : ''}
+      </div>`
+    )
+    .join('');
+  return `
+  <section class="block" id="talks">
+    <h2>Talks</h2>
+    <p class="block-sub">Invited talks, workshops, and panels.</p>
+    ${rows}
+  </section>`;
+}
+
+function renderPatents(items) {
+  if (!items.length) {
+    return `
+    <section class="block" id="patents">
+      <h2>Patents</h2>
+      ${emptyState('Nothing here yet — add "Patent" documents in the Studio.')}
+    </section>`;
+  }
+  const rows = items
+    .map(
+      (p) => `
+      <div class="entry">
+        <h3>${p.title || ''}${p.status ? ' <span class="meta" style="display:inline">(' + p.status + ')</span>' : ''}</h3>
+        ${authorsLine(p.inventors) ? `<div class="authors">${authorsLine(p.inventors)}</div>` : ''}
+        <div class="meta">${p.patentNumber || ''}${p.dateLabel ? ', ' + p.dateLabel : ''}${p.link ? ' · <a href="' + p.link + '" target="_blank" rel="noopener">link</a>' : ''}</div>
+      </div>`
+    )
+    .join('');
+  return `
+  <section class="block" id="patents">
+    <h2>Patents</h2>
+    <p class="block-sub">Filed and granted patents.</p>
+    ${rows}
+  </section>`;
+}
+
 function renderCertifications(items) {
   if (!items.length) {
     return `
@@ -555,7 +709,6 @@ function renderFooter() {
   return `
   <footer>
     <span>Last updated ${year}</span>
-    <span><a href="#" >other stuff</a></span>
   </footer>`;
 }
 
@@ -610,12 +763,15 @@ function renderersFor(data) {
     about: () => renderHero(data.settings),
     experience: () => renderExperience(data.experience),
     education: () => renderEducation(data.education),
+    skills: () => renderSkills(data.skills),
     projects: () => renderProjects(data.projects),
     openSource: () => renderOpenSource(data.openSource),
     github: () => renderGithub(data.githubHandle),
     blogs: () => renderBlogs(data.blogs),
     publications: () => renderPublications(data.publications),
     preprints: () => renderPreprints(data.preprints),
+    talks: () => renderTalks(data.talks),
+    patents: () => renderPatents(data.patents),
     certifications: () => renderCertifications(data.certifications),
     achievements: () => renderAchievements(data.achievements),
     guestbook: () => renderGuestbook(),
@@ -646,6 +802,3 @@ async function main() {
 }
 
 main();
-
-
-

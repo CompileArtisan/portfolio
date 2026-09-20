@@ -1,9 +1,9 @@
 // seed-sanity.mjs
 //
 // Pushes your real content into the Sanity dataset, shaped exactly to the
-// schemas in studio/schemas/ (siteSettings, experience, education, project,
-// publication, openSourceContribution, blogPost, preprint, certification,
-// achievement).
+// schemas in studio/schemas/ (siteSettings, experience, education, skill,
+// project, publication, openSourceContribution, blogPost, preprint, talk,
+// patent, certification, achievement).
 //
 // Merged from resume.tex AND cv.tex. Where they disagreed (GPA, wording),
 // cv.tex was previously treated as authoritative for the "8.88" figure, but
@@ -16,11 +16,21 @@
 //   - experience.js schema gained a `category` field ('research' vs
 //     'leadership') so club/organizing roles are tagged separately from
 //     research & work experience, matching the "Leadership and Activities"
-//     section in resume.tex. You'll need a matching small update to
-//     web/app.js (GROQ query + renderExperience) to group by it on the
-//     live site — see the snippet Claude gave you alongside this file.
+//     section in resume.tex.
 //   - Added two more projects: your Doom Emacs config repo, and the
 //     notes.compileartisan.dev static-notes build.
+//
+// UPDATE (this version):
+//   - Every field that used to be a plain `url` is now a `link` object
+//     ({ url, file }) — editors can paste a URL or upload a file straight
+//     in the Studio. This script now writes `{ url: '...' }` for those
+//     fields instead of a bare string. Affected: experience.advisorUrl,
+//     project.linkGithub / linkExtra, publication.paperUrl,
+//     certification.credentialUrl, openSourceContribution.url, and each
+//     entry in siteSettings.links[].url.
+//   - Added `skill`, `talk`, and `patent` as new document types (seeded
+//     as empty arrays below — nothing in resume.tex/cv.tex mapped to them
+//     yet, but the Studio sections now exist).
 //
 // ---------------------------------------------------------------------
 // SETUP
@@ -76,6 +86,12 @@ const textBlock = (text) => [
   },
 ];
 
+// Small helper for the new `link` object shape — pass an external URL,
+// get back `{ url }` ready to drop into a `link`-typed field. (To seed a
+// file instead, upload it through the Studio — asset uploads aren't
+// something this script does.)
+const link = (url) => (url ? { url } : undefined);
+
 // ---------------------------------------------------------------------
 // DATA — edit freely before running
 // ---------------------------------------------------------------------
@@ -97,9 +113,9 @@ const siteSettings = {
   email: 'praanesh.b.nair@gmail.com',
   githubHandle: 'CompileArtisan', // powers the contribution graph in the GitHub section
   links: [
-    { label: 'Portfolio', url: 'https://compileartisan.dev' },
-    { label: 'GitHub', url: 'https://github.com/CompileArtisan' },
-    { label: 'LinkedIn', url: 'https://linkedin.com/in/praanesh-nair' },
+    { label: 'Portfolio', url: link('https://compileartisan.dev') },
+    { label: 'GitHub', url: link('https://github.com/CompileArtisan') },
+    { label: 'LinkedIn', url: link('https://linkedin.com/in/praanesh-nair') },
   ],
   // Deliberately NOT setting sectionVisibility here — see upsertSettings()
   // below. It's a Studio-only field: toggle sections there, and re-running
@@ -151,7 +167,7 @@ const experience = [
     dateRange: '2026 – Present',
     lab: '',
     advisorName: '',
-    advisorUrl: '',
+    advisorUrl: undefined,
     documents: [],
     bullets: [
       'Project: Graph Neural Network Radio Map for 6G Networks.',
@@ -165,7 +181,7 @@ const experience = [
     dateRange: '2025 – Present',
     lab: '',
     advisorName: '',
-    advisorUrl: '',
+    advisorUrl: undefined,
     documents: [],
     bullets: ['Leading and organizing competitive programming initiatives, contests, and peer learning sessions.'],
     order: 2,
@@ -177,12 +193,19 @@ const experience = [
     dateRange: '2025',
     lab: '',
     advisorName: '',
-    advisorUrl: '',
+    advisorUrl: undefined,
     documents: [],
     bullets: ['Organized and conducted a technical workshop on programming language design and implementation concepts for a national student audience.'],
     order: 3,
   },
 ];
+
+// ---------------------------------------------------------------------
+// SKILLS — nothing in either document was structured as a skills list;
+// left empty so the Studio section exists but stays blank until you add
+// real categories (e.g. "Languages", "Frameworks & Libraries").
+// ---------------------------------------------------------------------
+const skills = [];
 
 const projects = [
   {
@@ -191,8 +214,8 @@ const projects = [
     description: textBlock(
       'Personal website with a dynamic routing system for Markdown-powered blog posts and optimized content delivery, deployed on Cloudflare Pages.'
     ),
-    linkGithub: '', // TODO: add repo URL if public
-    linkExtra: 'https://compileartisan.dev',
+    linkGithub: undefined, // TODO: add repo URL if public
+    linkExtra: link('https://compileartisan.dev'),
     linkExtraLabel: 'Live site',
     order: 1,
   },
@@ -207,8 +230,8 @@ const projects = [
         'curated, augmented 35,847-image dataset across 6 weed species from the CWD30 benchmark. Presented as ' +
         'original research at IEEE ICSSCNA 2026.'
     ),
-    linkGithub: '', // TODO
-    linkExtra: '',
+    linkGithub: undefined, // TODO
+    linkExtra: undefined,
     linkExtraLabel: '',
     order: 2,
   },
@@ -220,8 +243,8 @@ const projects = [
         'sockets to eliminate centralized servers, with a lightweight blockchain architecture for tamper-proof ' +
         'communication logs.'
     ),
-    linkGithub: '', // TODO
-    linkExtra: '',
+    linkGithub: undefined, // TODO
+    linkExtra: undefined,
     linkExtraLabel: '',
     order: 3,
   },
@@ -232,8 +255,8 @@ const projects = [
       'Personal Doom Emacs configuration used as a daily-driver development environment — layout, keybindings, ' +
         'and package setup tuned for Org-mode-centric writing and coding workflows.'
     ),
-    linkGithub: 'https://github.com/CompileArtisan/doom-emacs-configuration',
-    linkExtra: '',
+    linkGithub: link('https://github.com/CompileArtisan/doom-emacs-configuration'),
+    linkExtra: undefined,
     linkExtraLabel: '',
     order: 4,
   },
@@ -245,8 +268,8 @@ const projects = [
         'org-to-HTML export. A build-time script walks the repo, discovers every index.org, and generates the ' +
         'listing page (as seen on notes.compileartisan.dev) with no external static-site generator involved.'
     ),
-    linkGithub: 'https://github.com/CompileArtisan/notes.compileartisan.dev',
-    linkExtra: 'https://notes.compileartisan.dev',
+    linkGithub: link('https://github.com/CompileArtisan/notes.compileartisan.dev'),
+    linkExtra: link('https://notes.compileartisan.dev'),
     linkExtraLabel: 'Live site',
     order: 5,
   },
@@ -259,7 +282,7 @@ const publications = [
     dateLabel: '2026',
     presentationType: 'Presenter',
     authors: [{ name: 'Praanesh Balakrishnan Nair', isSelf: true }],
-    certificateUrl: '',
+    paperUrl: undefined,
   },
 ];
 
@@ -269,29 +292,30 @@ const certifications = [
     title: 'Google Cloud Cybersecurity Certificate',
     issuer: 'Google',
     dateLabel: '',
-    credentialUrl: 'https://www.credly.com/badges/3e9613f0-bbe7-4874-9c66-4ae538e40ab3',
+    credentialUrl: link('https://www.credly.com/badges/3e9613f0-bbe7-4874-9c66-4ae538e40ab3'),
     order: 1,
   },
   {
     title: 'Academy Graduate, Cloud Foundations',
     issuer: 'AWS',
     dateLabel: '',
-    credentialUrl: 'https://www.credly.com/badges/6407291d-da81-4619-bc2c-ec0824d1875c',
+    credentialUrl: link('https://www.credly.com/badges/6407291d-da81-4619-bc2c-ec0824d1875c'),
     order: 2,
   },
   {
     title: 'Image Processing Onramp',
     issuer: 'MATLAB (MathWorks)',
     dateLabel: 'Jan 2026',
-    credentialUrl:
-      'https://matlabacademy.mathworks.com/progress/share/certificate.html?id=1fa0de14-e555-4863-9e36-17d9577c656e',
+    credentialUrl: link(
+      'https://matlabacademy.mathworks.com/progress/share/certificate.html?id=1fa0de14-e555-4863-9e36-17d9577c656e'
+    ),
     order: 3,
   },
   {
     title: 'Computer Vision Essentials',
     issuer: 'Great Learning (GL)',
     dateLabel: '',
-    credentialUrl: 'https://www.mygreatlearning.com/certificate/VRJJEBWJ',
+    credentialUrl: link('https://www.mygreatlearning.com/certificate/VRJJEBWJ'),
     order: 4,
   },
 ];
@@ -316,13 +340,15 @@ const achievements = [
 const openSourceContributions = [];
 const blogPosts = [];
 const preprints = [];
+const talks = [];
+const patents = [];
 
 // ---------------------------------------------------------------------
 // PUSH TO SANITY
 // ---------------------------------------------------------------------
 
 async function upsert(doc, idPrefix) {
-  const _id = doc._id || `${idPrefix}-${slugify(doc.title || doc.organization || doc.institution || doc.repo)}`;
+  const _id = doc._id || `${idPrefix}-${slugify(doc.title || doc.organization || doc.institution || doc.repo || doc.category)}`;
   const { _id: _ignore, ...rest } = doc;
   const result = await client.createOrReplace({ _id, ...rest });
   console.log(`✓ ${result._type}: ${_id}`);
@@ -348,6 +374,7 @@ async function run() {
 
   for (const doc of education) await upsert({ _type: 'education', ...doc }, 'education');
   for (const doc of experience) await upsert({ _type: 'experience', ...doc }, 'experience');
+  for (const doc of skills) await upsert({ _type: 'skill', ...doc }, 'skill');
   for (const doc of projects) await upsert({ _type: 'project', ...doc }, 'project');
   for (const doc of publications) await upsert({ _type: 'publication', ...doc }, 'publication');
   for (const doc of certifications) await upsert({ _type: 'certification', ...doc }, 'certification');
@@ -355,6 +382,8 @@ async function run() {
   for (const doc of openSourceContributions) await upsert({ _type: 'openSourceContribution', ...doc }, 'oss');
   for (const doc of blogPosts) await upsert({ _type: 'blogPost', ...doc }, 'blog');
   for (const doc of preprints) await upsert({ _type: 'preprint', ...doc }, 'preprint');
+  for (const doc of talks) await upsert({ _type: 'talk', ...doc }, 'talk');
+  for (const doc of patents) await upsert({ _type: 'patent', ...doc }, 'patent');
 
   console.log('\nDone. Open the Studio to review/edit, or check your live site once deployed.');
 }

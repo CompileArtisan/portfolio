@@ -10,7 +10,12 @@ export default {
       type: 'string',
     },
     { name: 'dateLabel', title: 'Display date (e.g. Jan 2026)', type: 'string' },
-    { name: 'credentialUrl', title: 'Credential / badge URL', type: 'url' },
+    {
+      name: 'credentialUrl',
+      title: 'Credential / badge link',
+      type: 'link',
+      description: 'Link to the badge (e.g. Credly) OR upload the badge/certificate file directly.',
+    },
     {
       name: 'file',
       title: 'Certificate file (PDF/image, optional)',
