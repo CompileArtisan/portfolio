@@ -6,8 +6,6 @@ studio/.env
 studio/.env.*
 !studio/.env.example
 
-# Web — real config holds your Sanity project ID, keep it local only
-web/config.js
 
 # OS/editor
 .DS_Store
