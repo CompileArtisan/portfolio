@@ -324,8 +324,11 @@ function renderExperienceItem(e) {
   <div class="exp-item">
     <div class="exp-logo">${e.logo ? `<img src="${e.logo}" alt="${e.organization} logo" />` : (e.organization || '').slice(0, 2).toUpperCase()}</div>
     <div>
-      <div class="exp-head"><span class="exp-org">${e.organization || ''}</span></div>
-      <div class="exp-meta">${e.dateRange || ''}${docs ? ' · [' + docs + ']' : ''}</div>
+      <div class="entry-head">
+        <span class="entry-title">${e.organization || ''}</span>
+        <span class="entry-date">${e.dateRange || ''}</span>
+      </div>
+      ${docs ? `<div class="exp-meta">${docs}</div>` : ''}
       ${e.advisorName ? `<div class="exp-advisor">${e.lab ? e.lab + ' · ' : ''}Advisor: <a href="${e.advisorUrl || '#'}" target="_blank" rel="noopener">${e.advisorName}</a></div>` : ''}
       ${bullets ? `<ul class="exp-bullets">${bullets}</ul>` : ''}
     </div>
@@ -377,8 +380,11 @@ function renderEducation(items) {
       const bullets = (ed.bullets || []).map((b) => (typeof b === 'string' ? b : blocksToText([b])));
       return `
       <div class="entry">
-        <h3>${ed.institution || ''}</h3>
-        <div class="meta">${ed.qualification || ''}${ed.dateRange ? ', ' + ed.dateRange : ''}${ed.scoreLabel ? ' · ' + ed.scoreLabel : ''}</div>
+        <div class="entry-head">
+          <span class="entry-title">${ed.institution || ''}</span>
+          <span class="entry-date">${ed.dateRange || ''}</span>
+        </div>
+        <div class="entry-sub">${ed.qualification || ''}${ed.scoreLabel ? ' — ' + ed.scoreLabel : ''}</div>
         ${bullets.length ? `<ul class="exp-bullets">${bullets.map((b) => `<li>${b}</li>`).join('')}</ul>` : ''}
       </div>`;
     })
